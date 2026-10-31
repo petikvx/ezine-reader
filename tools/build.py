@@ -267,7 +267,7 @@ def parse_matrix_html(base):
     return secs
 
 if os.path.isdir(MATRIX):
-    for n, (iid, base, year, mode) in enumerate([('m1', os.path.join(MATRIX,'mtx'), '1999', 'html'), ('m2', os.path.join(MATRIX,'mtx2'), '2000', 'xml'), ('m3', os.path.join(MATRIX,'mtx3','MTX#3'), '2001', 'xml')], 1):
+    for n, (iid, base, year, mode) in enumerate([('m1', os.path.join(MATRIX,'mtx'), '1999', 'html'), ('m2', os.path.join(MATRIX,'mtx2'), '2000', 'xml'), ('m3', os.path.join(MATRIX,'mtx3'), '2001', 'xml')], 1):
         if not os.path.isdir(base): continue
         files = walk_files(base)
         if mode == 'html': sections = parse_matrix_html(base)
