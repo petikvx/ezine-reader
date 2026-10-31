@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Build catalog + search index for the 29A reader. Usage: build.py [raw_dir] [out_dir]"""
+"""Build catalog + search index for the 29A reader. Usage: build.py [raw_dir] [out_dir]
+raw_dir contains the two archives: 29a/ (29a-1 ... 29a-8) and MATRiX/ (mtx, mtx2, mtx3). Default: ../raw"""
 import os, re, sys, json, zipfile
 
-RAW = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), '../../29a'))
+ROOT = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), '../raw'))
+RAW = os.path.join(ROOT, '29a')
 OUT = os.path.abspath(sys.argv[2] if len(sys.argv) > 2 else os.path.join(os.path.dirname(__file__), '../data'))
 os.makedirs(OUT, exist_ok=True)
-MATRIX = os.path.abspath(os.path.join(RAW, '..', 'MATRiX'))
+MATRIX = os.path.join(ROOT, 'MATRiX')
 APP = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 TEXT_EXT = {'txt','doc','diz','asm','inc','c','h','bat','cpp','pas','htm','html','nfo','ini','ans','cmd','vbs','js','pl','php','sh','mac','def','lst','mak','rc','s','bas','reg','cfg','ion','1st','inf','scr','hlp_'}
@@ -55,9 +57,9 @@ def parse_idx(path):
 
 def rel(p):
     if p == MATRIX or p.startswith(MATRIX + os.sep): return 'MATRiX/' + os.path.relpath(p, MATRIX).replace(os.sep, '/')
-    return os.path.relpath(p, RAW).replace(os.sep, '/')
+    return '29a/' + os.path.relpath(p, RAW).replace(os.sep, '/')
 def absp(r):
-    return os.path.join(MATRIX, r[7:]) if r.startswith('MATRiX/') else os.path.join(RAW, r)
+    return os.path.join(MATRIX, r[7:]) if r.startswith('MATRiX/') else os.path.join(RAW, r[4:])
 
 import html as _html
 from html.parser import HTMLParser
@@ -171,7 +173,7 @@ for iid, folder, _, year in ISSUES:
     for f in files:
         flat.append([rel(f), os.path.getsize(f), 't' if is_text(f) else 'b'])
     diz_txt = '\n'.join(l.expandtabs(8).rstrip() for l in read_text(diz).split('\n')).strip('\n') if diz else ''
-    info = {'id': iid, 'ezine': '29a', 'name': '29A #' + iid.replace('s','') + (' (special)' if iid.endswith('s') else ''), 'year': year, 'folder': folder, 'diz': diz_txt, 'sections': sections, 'fileCount': len(files)}
+    info = {'id': iid, 'ezine': '29a', 'name': '29A #' + iid.replace('s','') + (' (special)' if iid.endswith('s') else ''), 'year': year, 'folder': '29a/' + folder, 'diz': diz_txt, 'sections': sections, 'fileCount': len(files)}
     issues.append(info)
     json.dump(flat, open(os.path.join(OUT, f'files-{iid}.json'),'w'), separators=(',',':'))
     # search corpus: text items in editorial/articles/utilities/others except big
@@ -284,19 +286,6 @@ if os.path.isdir(MATRIX):
                     full = absp(pp)
                     if is_text(full) and os.path.getsize(full) < 400000:
                         search.append({'i': iid, 's': sec['key'], 'p': pp, 't': it['t'], 'x': search_text(full)})
-
-# raw/ = directory of symlinks exposing both archives to the static site
-rawdir = os.path.join(APP, 'raw')
-if os.path.islink(rawdir): os.unlink(rawdir)
-os.makedirs(rawdir, exist_ok=True)
-def link(name, target):
-    lp = os.path.join(rawdir, name)
-    if os.path.islink(lp) or os.path.exists(lp):
-        if os.path.islink(lp): os.unlink(lp)
-        else: return
-    os.symlink(os.path.relpath(target, rawdir), lp)
-for n in os.listdir(RAW): link(n, os.path.join(RAW, n))
-if os.path.isdir(MATRIX): link('MATRiX', MATRIX)
 
 json.dump({'ezines':[{'id':'29a','name':'29A'},{'id':'matrix','name':'MATRiX'}],'issues': issues}, open(os.path.join(OUT,'catalog.json'),'w'), separators=(',',':'), ensure_ascii=False)
 json.dump(search, open(os.path.join(OUT,'search.json'),'w'), separators=(',',':'), ensure_ascii=False)
